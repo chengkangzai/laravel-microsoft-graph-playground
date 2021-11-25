@@ -2,7 +2,10 @@
     "name": "laravel/laravel",
     "type": "project",
     "description": "The Laravel Framework.",
-    "keywords": ["framework", "laravel"],
+    "keywords": [
+        "framework",
+        "laravel"
+    ],
     "license": "MIT",
     "require": {
         "php": "^7.3|^8.0",
@@ -12,7 +15,8 @@
         "laravel/sanctum": "^2.11",
         "laravel/tinker": "^2.5",
         "league/oauth2-client": "^2.6",
-        "microsoft/microsoft-graph": "^1.46"
+        "microsoft/microsoft-graph": "^1.46",
+        "ext-json": "*"
     },
     "require-dev": {
         "facade/ignition": "^2.5",

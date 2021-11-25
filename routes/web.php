@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CalendarController;
+use App\Http\Controllers\HomeController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -13,6 +16,11 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', [HomeController::class, 'welcome']);
+Route::get('/signin', [AuthController::class, 'signin']);
+Route::get('/callback', [AuthController::class, 'callback']);
+Route::get('/signout', [AuthController::class, 'signout']);
+Route::get('/calendar', [CalendarController::class, 'calendar'])->name('calendar.calendar');
+Route::get('/calendar/new', [CalendarController::class, 'getNewEventForm'])->name('calendar.getNewEventForm');
+Route::post('/calendar/new', [CalendarController::class, 'createNewEvent'])->name('calendar.createNewEvent');
+
