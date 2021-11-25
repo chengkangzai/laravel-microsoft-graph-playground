@@ -2,28 +2,34 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Services\MicrosoftGraphService;
+use App\Http\Services\TimeZoneService;
 use Illuminate\Http\Request;
-use Microsoft\Graph\Graph;
 use Microsoft\Graph\Model;
-use App\TokenStore\TokenCache;
-use App\TimeZones\TimeZones;
 
 class CalendarController extends Controller
 {
+    private MicrosoftGraphService $graphService;
+
+    public function __construct()
+    {
+        $this->graphService = new MicrosoftGraphService();
+    }
+
     public function calendar()
     {
-        $viewData = $this->loadViewData();
+        $viewData = $this->graphService->loadViewData();
 
-        $graph = $this->getGraph();
+        $graph = $this->graphService->getGraph();
 
         // Get user's timezone
-        $timezone = TimeZones::getTzFromWindows($viewData['userTimeZone']);
+        $timezone = TimeZoneService::getTzFromWindows($viewData['userTimeZone']);
 
         // Get start and end of week
         $startOfWeek = new \DateTimeImmutable('sunday -1 week', $timezone);
         $endOfWeek = new \DateTimeImmutable('sunday', $timezone);
 
-        $viewData['dateRange'] = $startOfWeek->format('M j, Y').' - '.$endOfWeek->format('M j, Y');
+        $viewData['dateRange'] = $startOfWeek->format('M j, Y') . ' - ' . $endOfWeek->format('M j, Y');
 
         $queryParams = array(
             'startDateTime' => $startOfWeek->format(\DateTimeInterface::ISO8601),
@@ -37,12 +43,12 @@ class CalendarController extends Controller
         );
 
         // Append query parameters to the '/me/calendarView' url
-        $getEventsUrl = '/me/calendarView?'.http_build_query($queryParams);
+        $getEventsUrl = '/me/calendarView?' . http_build_query($queryParams);
 
         $events = $graph->createRequest('GET', $getEventsUrl)
             // Add the user's timezone to the Prefer header
             ->addHeaders(array(
-                'Prefer' => 'outlook.timezone="'.$viewData['userTimeZone'].'"'
+                'Prefer' => 'outlook.timezone="' . $viewData['userTimeZone'] . '"'
             ))
             ->setReturnType(Model\Event::class)
             ->execute();
@@ -51,16 +57,13 @@ class CalendarController extends Controller
         return view('calendar', $viewData);
     }
 
-    // <getNewEventFormSnippet>
     public function getNewEventForm()
     {
-        $viewData = $this->loadViewData();
+        $viewData = $this->graphService->loadViewData();
 
         return view('newevent', $viewData);
     }
-    // </getNewEventFormSnippet>
 
-    // <createNewEventSnippet>
     public function createNewEvent(Request $request)
     {
         // Validate required fields
@@ -72,18 +75,16 @@ class CalendarController extends Controller
             'eventBody' => 'nullable|string'
         ]);
 
-        $viewData = $this->loadViewData();
+        $viewData = $this->graphService->loadViewData();
 
-        $graph = $this->getGraph();
+        $graph = $this->graphService->getGraph();
 
-        // Attendees from form are a semi-colon delimited list of
-        // email addresses
+        // Attendees from form are a semi-colon delimited list of email addresses
         $attendeeAddresses = explode(';', $request->eventAttendees);
 
         // The Attendee object in Graph is complex, so build the structure
         $attendees = [];
-        foreach($attendeeAddresses as $attendeeAddress)
-        {
+        foreach ($attendeeAddresses as $attendeeAddress) {
             array_push($attendees, [
                 // Add the email address in the emailAddress property
                 'emailAddress' => [
@@ -113,24 +114,11 @@ class CalendarController extends Controller
         ];
 
         // POST /me/events
-        $response = $graph->createRequest('POST', '/me/events')
+        $res = $graph->createRequest('POST', '/me/events')
             ->attachBody($newEvent)
             ->setReturnType(Model\Event::class)
             ->execute();
 
         return redirect('/calendar');
-    }
-    // </createNewEventSnippet>
-
-    private function getGraph(): Graph
-    {
-        // Get the access token from the cache
-        $tokenCache = new TokenCache();
-        $accessToken = $tokenCache->getAccessToken();
-
-        // Create a Graph client
-        $graph = new Graph();
-        $graph->setAccessToken($accessToken);
-        return $graph;
     }
 }

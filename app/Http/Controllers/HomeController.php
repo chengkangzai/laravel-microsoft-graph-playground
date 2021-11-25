@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Services\MicrosoftGraphService;
+
 class HomeController extends Controller
 {
     public function welcome()
     {
-        $viewData = $this->loadViewData();
+        $viewData = app(MicrosoftGraphService::class)->loadViewData();
 
         return view('welcome', $viewData);
     }

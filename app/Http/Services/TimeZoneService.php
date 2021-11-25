@@ -1,27 +1,25 @@
 <?php
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
 
-namespace App\TimeZones;
+namespace App\Http\Services;
 
-class TimeZones {
-    public static function getTzFromWindows($windowsTimeZone): \DateTimeZone {
+use DateTimeZone;
+
+class TimeZoneService
+{
+    public static function getTzFromWindows($windowsTimeZone): DateTimeZone
+    {
         $ianaTimeZone = self::$timeZoneMap[$windowsTimeZone];
 
-        if (null == $ianaTimeZone)
-        {
-            // Try the value passed in - it is possible
-            // the admins set this to IANA already
+        if (null == $ianaTimeZone) {
+            // Try the value passed in - it is possible the admins set this to IANA already
             $ianaTimeZone = $windowsTimeZone;
         }
 
-        return new \DateTimeZone($ianaTimeZone);
+        return new DateTimeZone($ianaTimeZone);
     }
 
-    // Basic lookup for mapping Windows time zone identifiers to
-    // IANA identifiers
-    // Mappings taken from
-    // https://github.com/unicode-org/cldr/blob/master/common/supplemental/windowsZones.xml
+    // Basic lookup for mapping Windows time zone identifiers to IANA identifiers
+    // Mappings taken from https://github.com/unicode-org/cldr/blob/master/common/supplemental/windowsZones.xml
     private static $timeZoneMap = [
         "Dateline Standard Time" => "Etc/GMT+12",
         "UTC-11" => "Etc/GMT+11",
@@ -162,4 +160,3 @@ class TimeZones {
         "Line Islands Standard Time" => "Pacific/Kiritimati"
     ];
 }
-// </zoneMappingsSnippet>

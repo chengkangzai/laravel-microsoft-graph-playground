@@ -2,40 +2,34 @@
 
 namespace App\Http\Controllers;
 
-use Microsoft\Graph\Model;
-use App\TokenStore\TokenCache;
+use App\Http\Services\MicrosoftGraphService;
+use App\Http\Services\TokenCacheService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Session;
+use League\OAuth2\Client\Provider\Exception\IdentityProviderException;
 use Microsoft\Graph\Graph;
 use Microsoft\Graph\Model\User;
 
 class AuthController extends Controller
 {
-    public function signin()
+    public function signin(MicrosoftGraphService $graphService)
     {
         // Initialize the OAuth client
-        $oauthClient = new \League\OAuth2\Client\Provider\GenericProvider([
-            'clientId' => config('azure.appId'),
-            'clientSecret' => config('azure.appSecret'),
-            'redirectUri' => config('azure.redirectUri'),
-            'urlAuthorize' => config('azure.authority') . config('azure.authorizeEndpoint'),
-            'urlAccessToken' => config('azure.authority') . config('azure.tokenEndpoint'),
-            'urlResourceOwnerDetails' => '',
-            'scopes' => config('azure.scopes')
-        ]);
+        $oauthClient = $graphService->getOAuthClient();
 
         $authUrl = $oauthClient->getAuthorizationUrl();
 
         // Save client state so we can validate in callback
-        session(['oauthState' => $oauthClient->getState()]);
+        Session::put(['oauthState' => $oauthClient->getState()]);
 
         // Redirect to AAD signin page
         return redirect()->away($authUrl);
     }
 
-    public function callback(Request $request)
+    public function callback(Request $request,MicrosoftGraphService $graphService)
     {
         // Validate state
-        $expectedState = session('oauthState');
+        $expectedState = Session::get('oauthState');
         $request->session()->forget('oauthState');
         $providedState = $request->query('state');
 
@@ -55,15 +49,7 @@ class AuthController extends Controller
         $authCode = $request->query('code');
         if (isset($authCode)) {
             // Initialize the OAuth client
-            $oauthClient = new \League\OAuth2\Client\Provider\GenericProvider([
-                'clientId' => config('azure.appId'),
-                'clientSecret' => config('azure.appSecret'),
-                'redirectUri' => config('azure.redirectUri'),
-                'urlAuthorize' => config('azure.authority') . config('azure.authorizeEndpoint'),
-                'urlAccessToken' => config('azure.authority') . config('azure.tokenEndpoint'),
-                'urlResourceOwnerDetails' => '',
-                'scopes' => config('azure.scopes')
-            ]);
+            $oauthClient = $graphService->getOAuthClient();
 
             try {
                 // Make the token request
@@ -78,14 +64,14 @@ class AuthController extends Controller
                     ->setReturnType(User::class)
                     ->execute();
 
-                $tokenCache = new TokenCache();
+                $tokenCache = new TokenCacheService();
                 $tokenCache->storeTokens($accessToken, $user);
-                // TEMPORARY FOR TESTING!
-                return redirect('/')
-                    ->with('error', 'Access token received')
-                    ->with('errorDetail', 'User:'.$user->getDisplayName().', Token:'.$accessToken->getToken());
+//                // TEMPORARY FOR TESTING!
+//                return redirect('/')
+//                    ->with('error', 'Access token received')
+//                    ->with('errorDetail', 'User:'.$user->getDisplayName().', Token:'.$accessToken->getToken());
 
-            } catch (\League\OAuth2\Client\Provider\Exception\IdentityProviderException $e) {
+            } catch (IdentityProviderException $e) {
                 return redirect('/')
                     ->with('error', 'Error requesting access token')
                     ->with('errorDetail', json_encode($e->getResponseBody()));
@@ -99,7 +85,7 @@ class AuthController extends Controller
 
     public function signout()
     {
-        $tokenCache = new TokenCache();
+        $tokenCache = new TokenCacheService();
         $tokenCache->clearTokens();
         return redirect('/');
     }
